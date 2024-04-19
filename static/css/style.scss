@@ -9,6 +9,7 @@
 
 body {
     background: #111;
+    overflow: hidden;
 }
 
 .Ccomponent {
@@ -279,6 +280,7 @@ body {
     }
 }
 
+// TODO : ne fonctionne pas 😭
 @media (max-width: 600px) {
     .navbar {
         top: calc(50vh - 80px * 2);
