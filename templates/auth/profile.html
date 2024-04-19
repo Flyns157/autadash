@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<title>Autadash | Profil</title>
+{% endblock %}
+
+{% block content %}
+<main class="Cheader">
+    <h1>Bonjour, {{ name }} !</h1>
+    <a href="{{ url_for('logout') }}" class="leave">Déconnexion</a>
+</main>
+{% endblock %}
