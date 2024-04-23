@@ -8,6 +8,10 @@ from random import random, choice
 import time
 from datetime import datetime
 import string
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
+from dotenv import load_dotenv
+import os
 # personnal modules
 import debug_sys
 
@@ -18,13 +22,52 @@ def generate_key(size: int = 50) -> str:
     """
     return ''.join(str(datetime.now()).split()) + ''.join(choice(string.ascii_letters + string.digits + string.punctuation) for _ in range(size))
 
+def generate_confirmation_token(email):
+    serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+    return serializer.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+
+def confirm_token(token, expiration=3600):
+    serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+    try:
+        email = serializer.loads(
+            token,
+            salt=app.config['SECURITY_PASSWORD_SALT'],
+            max_age=expiration
+        )
+    except:
+        return False
+    return email
+
+def send_email(to, subject, template):
+    msg = Message(
+        subject,
+        recipients=[to],
+        html=template,
+        sender=app.config['MAIL_DEFAULT_SENDER']
+    )
+    mail.send(msg)
+
 # =================================== Init Flask app ===================================
+# récupération des variables d'environnement
+load_dotenv()
+
+# init flask app
+
 app = Flask(__name__, static_url_path='',
             static_folder='static',
             template_folder='templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['SECRET_KEY'] = 'votre_secret_key'
 
+app.config.update({
+    "MAIL_SERVER": os.getenv('MAIL_SERVER'),
+    "MAIL_PORT": os.getenv('MAIL_PORT'),
+    "MAIL_USE_TLS": os.getenv('MAIL_USE_TLS'),
+    "MAIL_USERNAME": os.getenv('MAIL_USERNAME'),
+    "MAIL_PASSWORD": os.getenv('MAIL_PASSWORD')
+})
+
+mail = Mail(app)
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -33,6 +76,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True)
     email = db.Column(db.String(100), unique=True)
+    email_confirmed = db.Column(db.Boolean, default=False)
     password = db.Column(db.String(100))
 
     def set_password(self, password):
@@ -85,6 +129,12 @@ def signup():
         db.session.add(new_user)
         db.session.commit()
 
+        # Envoyer un email de confirmation
+        token = generate_confirmation_token(new_user.email)
+        confirm_url = url_for('confirm_email', token=token, _external=True)
+        html = render_template('email/activate.html', confirm_url=confirm_url)
+        send_email(new_user.email, 'Veuillez confirmer votre email', html)
+
         return redirect(url_for('login'))
     return render_template('auth/signup.html')
 
@@ -103,6 +153,22 @@ def login():
         return redirect(url_for('profile'))
 
     return render_template('auth/login.html')
+
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = confirm_token(token)
+    except:
+        flash('Le lien de confirmation est invalide ou a expiré.', 'danger')
+    user = User.query.filter_by(email=email).first_or_404()
+    if user.email_confirmed:
+        flash('Compte déjà confirmé. Veuillez vous connecter.', 'success')
+    else:
+        user.email_confirmed = True
+        db.session.add(user)
+        db.session.commit()
+        flash('Vous avez confirmé votre compte. Merci!', 'success')
+    return redirect(url_for('login'))
 
 @app.route('/profile')
 @login_required
