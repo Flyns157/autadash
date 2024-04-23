@@ -6,7 +6,9 @@
 
 {% block content %}
 <main class="Cheader">
-    <h1>Bonjour, {{ name }} !</h1>
+    <div>
+        <h1>Bonjour, {{ name }} !</h1>
+    </div>
     <a href="{{ url_for('logout') }}" class="leave">Déconnexion</a>
 </main>
 {% endblock %}
