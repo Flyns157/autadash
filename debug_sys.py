@@ -1,4 +1,4 @@
-__version__ = 2.2
+__version__ = 2.3
 #=============================== IMPORTS ZONE ===============================
 from datetime import datetime
 
@@ -13,7 +13,7 @@ tmp.close()
 
 
 #=============================== MAIN ZONE ===============================
-def log(type : str, content : str, content_size_limit : int = 150, file : str = 'gaza')-> None:
+def log(msg_type : str | list[str], msg_content : str, content_size_limit : int = 150, file : str = 'gaza')-> None:
     """
     Enregistre un message dans un fichier journal spécifié.
     
@@ -23,8 +23,8 @@ def log(type : str, content : str, content_size_limit : int = 150, file : str = 
     spécifiée, seuls les premiers caractères jusqu'à la limite sont enregistrés.
     
     Args:
-        type (str): Le type du message à enregistrer.
-        content (str): Le contenu du message à enregistrer.
+        msg_type (str | list[str]): Le ou les types du message à enregistrer.
+        msg_content (str): Le contenu du message à enregistrer.
         content_size_limit (int, optional): La limite de taille du contenu du message. 
                                             Par défaut, elle est fixée à 150 caractères.
         file (str, optional): Le nom du fichier journal dans lequel enregistrer le message. 
@@ -36,8 +36,9 @@ def log(type : str, content : str, content_size_limit : int = 150, file : str = 
     global num_log
     num_log += 1
     try:
+        if isinstance(msg_type, list): msg_type = ' | '.join(msg_type)
         with open(f'{file}.log', 'a', encoding="UTF8") as file:
-            file.write(f'({num_log}) : {datetime.now()} : {type} : {content[:content_size_limit]}\n')
+            file.write(f'({num_log}) : {datetime.now()} : {msg_type} : {msg_content[:content_size_limit]}\n')
     except Exception as e:
         with open(f'{file}.log', 'a', encoding="UTF8") as file:
             file.write(f'({num_log}) : {datetime.now()} : LOG_ERROR : {e}\n')
