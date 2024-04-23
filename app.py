@@ -52,12 +52,13 @@ def send_email(to, subject, template):
 load_dotenv()
 
 # init flask app
-
 app = Flask(__name__, static_url_path='',
             static_folder='static',
             template_folder='templates')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
-app.config['SECRET_KEY'] = 'votre_secret_key'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
+app.config['SECRET_KEY'] = generate_key() if 'auto' in os.getenv('SECRET_KEY') else os.getenv('SECRET_KEY')
+debug_sys.log('INFO', f'APP SECRET KEY SET TO {app.config['SECRET_KEY']}')
+print(f'APP SECRET KEY SET TO {app.config['SECRET_KEY']}')
 
 app.config.update({
     "MAIL_SERVER": os.getenv('MAIL_SERVER'),
@@ -146,10 +147,12 @@ def login():
 
         user = User.query.filter((User.email == username_or_email) | (User.username == username_or_email)).first()
         if not user or not user.check_password(password):
+            debug_sys.log(['INFO', 'DINIED'],f'User : {user} >> demande de connexion (with username_or_email={username_or_email}; password={password}; refusé)')
             flash('Veuillez vérifier vos identifiants')
             return redirect(url_for('login'))
 
         login_user(user)
+        debug_sys.log('INFO',f'User : {user} >> demande de connexion (accepté)')
         return redirect(url_for('profile'))
 
     return render_template('auth/login.html')
@@ -159,14 +162,17 @@ def confirm_email(token):
     try:
         email = confirm_token(token)
     except:
+        debug_sys.log(['INFO', 'DENIED'],f'Email : {email} >> demande de confirmation (invalide ou expiré)')
         flash('Le lien de confirmation est invalide ou a expiré.', 'danger')
     user = User.query.filter_by(email=email).first_or_404()
     if user.email_confirmed:
+        debug_sys.log('INFO',f'Email : {email} >> demande de confirmation (déjà confirmé)')
         flash('Compte déjà confirmé. Veuillez vous connecter.', 'success')
     else:
         user.email_confirmed = True
         db.session.add(user)
         db.session.commit()
+        debug_sys.log(['INFO', 'ACCEPTED'],f'Email : {email} >> demande de confirmation (accepté)')
         flash('Vous avez confirmé votre compte. Merci!', 'success')
     return redirect(url_for('login'))
 
