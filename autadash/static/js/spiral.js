@@ -1,3 +1,12 @@
+
+window.onscroll = function () {
+    var pixelsScrolles = window.pageYOffset || document.documentElement.scrollTop;
+    var canvas = document.getElementById('c');
+    if (canvas) {
+        canvas.style.height = 'calc(200vh - ' + pixelsScrolles + 'px)';
+    }
+}
+
 window.requestAnimFrame = function () { return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function (a) { window.setTimeout(a, 1E3 / 60) } }();
 
 document.onselectstart = function () {
@@ -69,8 +78,8 @@ function createOrb(mx, my) {
             if (isNaN(angleH)) { angleH = 0; }
 
             this.colorAngle = angleH;
-            this.x = this.centerX + Math.sin(this.angle * -1) * this.radius + rand(0,1);
-            this.y = this.centerY + Math.cos(this.angle * -1) * this.radius + rand(0,1);
+            this.x = this.centerX + Math.sin(this.angle * -1) * this.radius;
+            this.y = this.centerY + Math.cos(this.angle * -1) * this.radius + 2;
             this.angle += this.speed;
 
         }
