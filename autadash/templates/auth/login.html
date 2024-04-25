@@ -1,5 +1,5 @@
 {% extends "layout.html" %} {% block head %}
-<title>Autadash | Inscription</title>
+<title>Autadash | Connexion</title>
 {% endblock %} {% block content %}
 <!--ring div starts here-->
 <main class="Ccomponent">
@@ -8,27 +8,24 @@
         <i style="--clr: #f2704d"></i>
         <i style="--clr: #46baff"></i>
         <form class="login" method="POST">
-            <h2>Signup</h2>
+            <h2>Login</h2>
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
                     <p id="error_message">{{ messages[0] }}</p>
                 {% endif %}
             {% endwith %}
             <div class="inputBx">
-                <input type="text" id="username" name="username" placeholder="Username" required />
-            </div>
-            <div class="inputBx">
-                <input type="email" id="email" name="email" placeholder="Email" required />
+                <input type="text" id="username_or_email" name="username_or_email" placeholder="Username or Email" required />
             </div>
             <div class="inputBx">
                 <input type="password" id="password" name="password" placeholder="Password" required />
             </div>
             <div class="inputBx">
-                <input type="submit" value="Sign in" />
+                <input type="submit" value="Sign in" style="font-weight:bold;"/>
             </div>
             <div class="links">
-                <a href="#"></a>
-                <a href="{{ url_for('login') }}">Login</a>
+                <a href="#">Forget Password</a>
+                <a href="{{ url_for('auth.signup') }}">Signup</a>
             </div>
         </form>
     </div>
