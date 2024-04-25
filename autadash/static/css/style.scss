@@ -1,15 +1,22 @@
 @import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@300&display=swap");
+@import url("https://fonts.googleapis.com/css?family=IBM%20Plex%20Sans:500|IBM%20Plex%20Sans:300");
+
+:root {
+    --m: 4rem;
+}
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: "Quicksand", sans-serif;
+    scroll-behavior: smooth;
 }
 
 body {
     background: #000000;
     overflow-x: hidden;
+    font-size: calc(0.3 * var(--m));
 }
 
 .Ccomponent {
@@ -304,7 +311,7 @@ canvas {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: -1;
+    z-index: 1;
 }
 
 .Cheader {
@@ -323,7 +330,7 @@ canvas {
         position: sticky;
         top: 48%;
         z-index: 100;
-        padding-bottom: 20px;
+        transform: translate(0, -50px);
     }
 
     strong {
@@ -351,7 +358,7 @@ article {
     position: relative;
     width: 100%;
     height: 100vh;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.3);
 }
 
 .item {
@@ -568,26 +575,139 @@ article {
     color: #f2704d;
 }
 
-footer {
-    padding-top: 10vh;
-    width: 100%;
-    height: calc(300px + 10vh);
-    background: gray;
-    bottom: 0;
-    position: fixed;
-    z-index: -2;
+.pre_footer {
+    height: 400px;
+    width: 0%;
 }
 
-footer h1
-{
+footer {
     width: 100%;
-    height: 100%;
-    padding: 0;
-    margin: 0;
-    text-transform: uppercase;
-    text-align: center;
-    font-family: Helvetica;
-    font-size: 150px;
-    color: #fff;
-    line-height: 300px;
+    height: calc(400px + 10vh);
+    bottom: 0;
+    position: fixed;
+    background-color: black;
+    font-family: "IBM Plex Sans";
+    font-weight: 300;
+    color: #d5d5d5;
+    font-size: calc(0.3 * var(--m));
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: flex-end;
+    padding: 5rem 2vw;
+    padding-top: calc(10vh + 5rem);
+
+    h3 {
+        font-weight: 500;
+        font-size: calc(0.6 * var(--m));
+        margin: 0;
+    }
+
+    .backdrop {
+        z-index: -5;
+        position: absolute;
+        inset: 0;
+
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+
+        mask-image: linear-gradient(
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, 0.5) 10%,
+            rgba(0, 0, 0, 0.8) 20%,
+            rgba(0, 0, 0, 1) 30%,
+            rgb(0, 0, 0)
+        );
+
+        -webkit-mask-image: linear-gradient(
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, 0.5) 10%,
+            rgba(0, 0, 0, 0.8) 20%,
+            rgba(0, 0, 0, 1) 30%,
+            rgb(0, 0, 0)
+        );
+    }
+
+    .col {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: calc(0.3 * var(--m)) calc(0.8 * var(--m));
+        width: 28%;
+    }
+
+    .col2,
+    .col3 {
+        background-color: #121212;
+        border-radius: calc(0.5 * var(--m));
+    }
+
+    img {
+        height: calc(0.3 * var(--m));
+        object-fit: cover;
+    }
+
+    .social {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 1rem;
+    }
+
+    a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .link {
+        width: calc(0.8 * var(--m));
+        height: calc(0.8 * var(--m));
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: calc(0.1 * var(--m));
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    p {
+        display: block;
+        margin-block-start: 1em;
+        margin-block-end: 1em;
+        margin-inline-start: 0px;
+        margin-inline-end: 0px;
+        unicode-bidi: isolate;
+    }
+}
+
+// footer::before {
+//     content: "";
+//     position: absolute;
+//     inset: 0;
+//     background: linear-gradient(
+//         rgba(0, 0, 0, 0) 5%,
+//         rgba(0, 0, 0, 0.3) 20%,
+//         rgba(0, 0, 0, 0.6) 30%,
+//         rgba(0, 0, 0, 0.8) 40%,
+//         rgba(0, 0, 0, 1) 50%,
+//         rgb(0, 0, 0)
+//     );
+//     z-index: -7;
+// }
+
+@media screen and (max-width: 1000px) {
+    :root {
+        --m: 3rem;
+    }
+}
+
+@media screen and (max-width: 700px) {
+    footer {
+        flex-direction: column;
+        padding: 5rem 20vw;
+    }
+    .col {
+        width: 100%;
+    }
 }
