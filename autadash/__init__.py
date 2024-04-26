@@ -12,11 +12,11 @@ mail = Mail()
 db = SQLAlchemy()
 login_manager = LoginManager()
 app = Flask(__name__, static_url_path='',
-            static_folder='static',
+            static_folder='assets',
             template_folder='templates')
 
 # =================================== Init Flask app ===================================
-def init():
+def init() -> Flask:
     # Project settings
     app.config.from_object(Config)
 
@@ -53,7 +53,7 @@ def init():
     return app
 
 # =================================== Utils ===================================
-def send_email(to, subject, template):
+def send_email(to, subject, template) -> None:
     msg = Message(
         subject,
         recipients=[to],
@@ -62,11 +62,11 @@ def send_email(to, subject, template):
     mail.send(msg)
     debug_sys.log('INFO', f'Email sent to {to}')
 
-def generate_confirmation_token(email):
+def generate_confirmation_token(email) -> str:
     serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
     return serializer.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
 
-def confirm_token(token, expiration=3600):
+def confirm_token(token: str, expiration=3600):
     serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
     try:
         email = serializer.loads(
