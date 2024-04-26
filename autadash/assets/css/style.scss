@@ -341,11 +341,12 @@ canvas {
         font-weight: bold;
         position: sticky;
         z-index: 100;
-        top: calc(30vh - 3 * var(--m));
+        // top: calc(30vh - 3 * var(--m));
+        top: 0;
+        transform: translate(0, 25vh);
         display: grid;
         grid-template-columns: 2fr;
         // grid-gap: 10px;
-        // transform: translate(0, calc(3 * var(--m)));
         padding: 50px;
         border-radius: 30px;
         backdrop-filter: blur(20px);
@@ -356,6 +357,7 @@ canvas {
             grid-area: span 2 / 1 ;
             width: 40vw;
             filter: drop-shadow(0 0 0.75rem);
+            z-index: 1000;
         }
         h3 {
             grid-area: 1 / 2 ;
