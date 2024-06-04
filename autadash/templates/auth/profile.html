@@ -5,16 +5,12 @@
 {% endblock %}
 
 {% block content %}
-<main class="Cheader">
-    <div>
-        <h2>Hello, {{ name }} !</h1>
-        <p>Your email : {{ email }}</p>
-        {% if not email_confirmed %}
-            <form action="{{ url_for('auth.send_confirmation_email') }}" method="post">
-                <input type="submit" value="Send a confirmation Email">
-            </form>
-        {% endif %}
-        <a href="{{ url_for('auth.logout') }}" class="leave">Logout</a>
-    </div>
-</main>
+<h2>Hello, {{ name }} !</h1>
+    <p>Your email : {{ email }}</p>
+    {% if not email_confirmed %}
+    <form action="{{ url_for('auth.send_confirmation_email') }}" method="post">
+        <input type="submit" value="Send a confirmation Email">
+    </form>
+    {% endif %}
+    <a href="{{ url_for('auth.logout') }}" class="leave">Logout</a>
 {% endblock %}
