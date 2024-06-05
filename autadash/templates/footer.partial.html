@@ -20,7 +20,14 @@
         <p>Terms of service</p>
     </div>
     <div class="col col3">
-        <p>Services</p>
+        <form id="languageForm" method="post" action="{{ url_for('set_language') }}">
+            <select name="language" onchange="document.getElementById('languageForm').submit();">
+                {% for lang, name in SUPPORTED_LANGUAGES.items() %}
+                    <option value="{{ lang }}" {% if get_locale() == lang %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+            
         <p>Products</p>
         <p>Join our team</p>
         <p>Partner with us</p>

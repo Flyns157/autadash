@@ -6,7 +6,7 @@ import os
 load_dotenv()
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///db.sqlite'
     SECRET_KEY = os.getenv('SECRET_KEY') if os.getenv('SECRET_KEY') and os.getenv('SECRET_KEY').lower() != 'auto' else secrets.token_urlsafe()
     SECURITY_PASSWORD_SALT = os.getenv('SECURITY_PASSWORD_SALT') if os.getenv('SECURITY_PASSWORD_SALT') and os.getenv('SECURITY_PASSWORD_SALT').lower() != 'auto' else secrets.token_hex(16)
     MAIL_DEBUG = os.getenv('MAIL_DEBUG').lower() == 'true'
@@ -17,3 +17,6 @@ class Config:
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = ('Autadash', os.getenv('MAIL_DEFAULT_SENDER'))
+    DEFAULT_LANGUAGE = os.getenv('DEFAULT_LANGUAGE') or 'en'
+    BABEL_DEFAULT_LOCALE='translations'
+    BABEL_DEFAULT_TIMEZONE=os.getenv('DEFAULT_TIMEZONE') or 'UTC'
