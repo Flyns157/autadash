@@ -10,7 +10,7 @@
         <i style="--clr: #f2704d"></i>
         <i style="--clr: #46baff"></i>
         <form class="login" method="POST">
-            <h2>{% trans %}Signup{% endtrans %}</h2>
+            <h2>{% trans %}Sign up{% endtrans %}</h2>
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
                     <p id="error_message">{{ messages[0] }}</p>
@@ -26,7 +26,7 @@
                 <input type="password" id="password" name="password" placeholder="{% trans %}Password{% endtrans %}" required />
             </div>
             <div class="inputBx">
-                <input type="submit" value="{% trans %}Sign in{% endtrans %}" />
+                <input type="submit" value="{% trans %}Sign up{% endtrans %}" />
             </div>
             <div class="links">
                 <a href="#"></a>

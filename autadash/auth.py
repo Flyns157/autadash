@@ -23,7 +23,8 @@ from . import (
     send_email,
     login_manager,
     generate_confirmation_token,
-    confirm_token
+    confirm_token,
+    get_device_info
 )
 from autadash.models import User
 import re
@@ -101,6 +102,15 @@ def login():
             logger.warning(f'Login failed for: {username_or_email}')
             flash('Veuillez vérifier vos identifiants')
             return redirect(url_for('auth.login'))
+
+        device_info = get_device_info()
+        if not user.is_device_known(device_info):
+            # Envoyer un email si le dispositif est nouveau
+            html = render_template('email/new_device.html', device_info=device_info)
+            send_email(user.email, 'Nouvelle connexion détectée', html)
+            user.add_known_device(device_info)
+            db.session.commit()
+            logger.info(f'New device detected and email sent to: {user.email}')
 
         login_user(user)
         logger.info(f'User logged in: {user.username}')

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle connexion détectée</title>
+</head>
+<body>
+    <p>Bonjour,</p>
+    <p>Une nouvelle connexion a été détectée sur votre compte depuis un réseau ou un appareil inconnu :</p>
+    <p>Appareil :</p>
+    <ul>
+        {% for k, v in device_info.items() %}<li>{{ k }} : {{ v }}</li>{% endfor %}
+    </ul>
+    <p>Si vous reconnaissez cette connexion, aucune action supplémentaire n'est requise. Sinon, veuillez sécuriser votre compte immédiatement.</p>
+    <p>Cordialement,</p>
+    <p>L'équipe de Autadash</p>
+</body>
+</html>

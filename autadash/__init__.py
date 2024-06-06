@@ -1,5 +1,4 @@
-# =================================== Init Dependencies ===================================
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, url_for
 from itsdangerous import URLSafeTimedSerializer
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
@@ -14,9 +13,9 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 babel = Babel()
 app = Flask(__name__,
-            static_url_path = '',
-            static_folder = 'assets',
-            template_folder = 'templates')
+            static_url_path='',
+            static_folder='assets',
+            template_folder='templates')
 
 # =================================== Supported Languages ===================================
 SUPPORTED_LANGUAGES = {
@@ -30,10 +29,10 @@ def init() -> Flask:
     app.config.from_object(Config)
 
     # Init logging
-    logging.basicConfig(level = logging.INFO,
-                        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                        handlers = [logging.FileHandler('autadash.log'),
-                                    logging.StreamHandler()])
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        handlers=[logging.FileHandler('autadash.log'),
+                                  logging.StreamHandler()])
 
     logger = logging.getLogger(__name__)
     logger.info('Application started')
@@ -49,15 +48,15 @@ def init() -> Flask:
 
     # Init SQLAlchemy
     db.init_app(app)
-
+    from .models import User
+    
     # To initialise tables
     with app.app_context():
         db.create_all()
 
     # Publish the APP SECRET KEY
-    # log('INFO', f'APP SECRET KEY SET TO {app.config['SECRET_KEY']}')
-    print(f'APP SECRET KEY SET TO {app.config['SECRET_KEY']}')
-    
+    print(f'APP SECRET KEY SET TO {app.config["SECRET_KEY"]}')
+
     # Add get_locale to the context
     @app.context_processor
     def inject_get_locale():
@@ -78,8 +77,16 @@ def init() -> Flask:
         response = redirect(request.referrer)
         response.set_cookie('lang', language)
         return response
+    
+    @app.errorhandler(401)
+    def unauthorized_redirect(e):
+        return redirect(url_for('index'))
 
-    # Import and egistrer blueprints
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template('error/404.html')
+
+    # Import and register blueprints
     from .auth import bp as auth_bp
     app.register_blueprint(auth_bp)
 
@@ -88,6 +95,28 @@ def init() -> Flask:
 # =================================== Utils ===================================
 def get_locale():
     return request.cookies.get('lang', request.accept_languages.best_match(SUPPORTED_LANGUAGES.keys()))
+
+
+def get_device_info():
+    user_agent = request.headers.get('User-Agent')
+    ip_address = request.remote_addr
+    accept_headers = request.headers.get('Accept')
+    platform = request.user_agent.platform
+    browser = request.user_agent.browser
+    language = request.headers.get('Accept-Language')
+    
+    device_info = {
+        'user_agent': user_agent,
+        'ip_address': ip_address,
+        'accept_headers': accept_headers,
+        'platform': platform,
+        'browser': browser,
+        'language': language
+    }
+    
+    print('Device infos :', *device_info.items(), sep='\n', end='\n\n')
+    return device_info
+
 
 def send_email(to, subject, template) -> None:
     msg = Message(
@@ -98,9 +127,11 @@ def send_email(to, subject, template) -> None:
     mail.send(msg)
     # log('INFO', f'Email sent to {to}')
 
+
 def generate_confirmation_token(email) -> str:
     serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
     return serializer.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+
 
 def confirm_token(token: str, expiration=3600):
     serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])

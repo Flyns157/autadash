@@ -32,3 +32,6 @@ msgstr "Email"
 
 msgid "Sign up"
 msgstr "Sign up"
+
+msgid "Inscription"
+msgstr "Registration"
