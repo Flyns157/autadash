@@ -118,6 +118,44 @@ def login():
 
     return render_template('auth/login.html', SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
 
+@bp.route('/reset_password_request', methods=['GET', 'POST'])
+def reset_password_request():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            token = generate_confirmation_token(user.email)
+            reset_url = url_for('auth.reset_password', token=token, _external=True)
+            html = render_template('email/reset_password.html', reset_url=reset_url)
+            send_email(user.email, 'Réinitialisation du mot de passe', html)
+            flash('Un email avec les instructions pour réinitialiser votre mot de passe a été envoyé.', 'info')
+        else:
+            flash('Cet email n\'est pas enregistré.', 'warning')
+        return redirect(url_for('auth.login'))
+    return render_template('auth/reset_password_request.html', SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
+
+@bp.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = confirm_token(token)
+    except:
+        flash('Le lien de réinitialisation est invalide ou a expiré.', 'danger')
+        return redirect(url_for('auth.login'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.set_password(password)
+            db.session.commit()
+            flash('Votre mot de passe a été mis à jour.', 'success')
+            return redirect(url_for('auth.login'))
+        else:
+            flash('Utilisateur non trouvé.', 'danger')
+            return redirect(url_for('auth.reset_password_request'))
+    
+    return render_template('auth/reset_password.html', token=token, SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
+
 @bp.route('/confirm/<token>')
 def confirm_email(token):
     try:
