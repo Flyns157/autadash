@@ -1,11 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for
 from itsdangerous import URLSafeTimedSerializer
+from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from flask_login import LoginManager
 from flask_babel import Babel, _
 from config import Config
 import logging
+import random
+import string
 
 # =================================== Create globals variable ===================================
 mail = Mail()
@@ -49,7 +52,7 @@ def init() -> Flask:
     # Init SQLAlchemy
     db.init_app(app)
     from .models import User
-    
+
     # To initialise tables
     with app.app_context():
         db.create_all()
@@ -77,7 +80,7 @@ def init() -> Flask:
         response = redirect(request.referrer)
         response.set_cookie('lang', language)
         return response
-    
+
     @app.errorhandler(401)
     def unauthorized_redirect(e):
         return redirect(url_for('index'))
@@ -97,6 +100,27 @@ def get_locale():
     return request.cookies.get('lang', request.accept_languages.best_match(SUPPORTED_LANGUAGES.keys()))
 
 
+def generate_verification_code(size: int = 6) -> str:
+    CHARS = string.ascii_letters + string.digits
+    return ''.join(random.choice(CHARS) for _ in range(size))
+
+
+def send_verification_email(user):
+    # Generate and send verification code if email is confirmed
+    verification_code = generate_verification_code()
+    user.verification_code = verification_code
+    db.session.commit()
+    
+    verification_code = generate_verification_code()
+    user.verification_code = verification_code
+    user.verification_code_expiry = datetime.now() + timedelta(minutes=10)  # Code valid for 10 minutes
+    db.session.commit()
+    subject = "Votre code de vérification"
+    html = render_template('email/verification_code.html',
+                           verification_code=verification_code)
+    send_email(user.email, subject, html)
+
+
 def get_device_info():
     user_agent = request.headers.get('User-Agent')
     ip_address = request.remote_addr
@@ -104,7 +128,7 @@ def get_device_info():
     platform = request.user_agent.platform
     browser = request.user_agent.browser
     language = request.headers.get('Accept-Language')
-    
+
     device_info = {
         'user_agent': user_agent,
         'ip_address': ip_address,
@@ -113,7 +137,7 @@ def get_device_info():
         'browser': browser,
         'language': language
     }
-    
+
     print('Device infos :', *device_info.items(), sep='\n', end='\n\n')
     return device_info
 

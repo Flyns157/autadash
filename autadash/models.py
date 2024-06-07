@@ -4,6 +4,7 @@ It includes the User model.
 """
 import json
 from . import db
+from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -17,6 +18,8 @@ class User(UserMixin, db.Model):
     email_confirmed = db.Column(db.Boolean, default=False)
     password = db.Column(db.String(100))
     known_devices = db.Column(db.String, default='[]')  # Storing known devices as JSON string
+    verification_code = db.Column(db.String(6))
+    verification_code_expiry = db.Column(db.DateTime)  # Column for verification code expiry
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -32,3 +35,8 @@ class User(UserMixin, db.Model):
     def is_device_known(self, device_info):
         devices = json.loads(self.known_devices)
         return device_info in devices
+    
+    def verification_code_alive(self)-> bool:
+        if self.verification_code_expiry is None:
+            return False
+        return self.verification_code_expiry > datetime.now()

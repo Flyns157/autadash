@@ -24,9 +24,12 @@ from . import (
     login_manager,
     generate_confirmation_token,
     confirm_token,
-    get_device_info
+    get_device_info,
+    generate_verification_code,
+    send_verification_email
 )
 from autadash.models import User
+from datetime import datetime
 import re
 
 logger = logging.getLogger(__name__)
@@ -103,20 +106,45 @@ def login():
             flash('Veuillez vérifier vos identifiants')
             return redirect(url_for('auth.login'))
 
-        device_info = get_device_info()
-        if not user.is_device_known(device_info):
-            # Envoyer un email si le dispositif est nouveau
-            html = render_template('email/new_device.html', device_info=device_info)
-            send_email(user.email, 'Nouvelle connexion détectée', html)
-            user.add_known_device(device_info)
-            db.session.commit()
-            logger.info(f'New device detected and email sent to: {user.email}')
+        if not user.email_confirmed:
+            logger.warning(f'Email not confirmed for: {username_or_email}')
+            flash('Veuillez confirmer votre adresse email avant de vous connecter')
+            return redirect(url_for('auth.login'))
+        send_verification_email(user)
+        logger.info(f'Verification code sent to: {user.email}')
+
+        return redirect(url_for('auth.verify', user_id=user.id))
+
+    return render_template('auth/login.html', SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
+
+@bp.route('/verify/<int:user_id>', methods=['GET', 'POST'])
+def verify(user_id):
+    user = User.query.get(user_id)
+    if request.method == 'POST':
+        verification_code = request.form.get('verification_code')
+    
+        print(user.verification_code, verification_code)
+        if user.verification_code != verification_code:
+            logger.warning(f'Invalid verification code for: {user.email}')
+            flash('Code de vérification incorrect')
+            return redirect(url_for('auth.verify', user_id=user_id))
+
+        print(user.verification_code_expiry , datetime.now())
+        if not user.verification_code_alive():
+            logger.warning(f'Expired verification code for: {user.email}')
+            flash('Code de vérification expiré')
+            return redirect(url_for('auth.login'))
+
+        # Clear the verification code and expiry after successful verification
+        user.verification_code = None
+        user.verification_code_expiry = None
+        db.session.commit()
 
         login_user(user)
         logger.info(f'User logged in: {user.username}')
         return redirect(url_for('auth.profile'))
 
-    return render_template('auth/login.html', SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
+    return render_template('auth/verify.html', user_id=user_id, SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
 
 @bp.route('/reset_password_request', methods=['GET', 'POST'])
 def reset_password_request():
