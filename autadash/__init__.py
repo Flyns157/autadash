@@ -59,8 +59,6 @@ def init() -> Flask:
 
         # Create admin account if it does not exist
         admin_email = app.config["MAIL_USERNAME"]
-        print(admin_email)
-        input()
         admin_password = app.config["ADMIN_PASSWORD"]
         
         admin_user = User.query.filter_by(email=admin_email).first()
