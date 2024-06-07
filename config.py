@@ -1,9 +1,15 @@
 from dotenv import load_dotenv
 import secrets
+import random
+import string
 import os
 
 # récupération des variables d'environnement
 load_dotenv()
+
+def generate_password(size: int = 15) -> str:
+    CHARS = string.ascii_letters + string.digits
+    return ''.join(random.choice(CHARS) for _ in range(size))
 
 class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///db.sqlite'
@@ -20,3 +26,4 @@ class Config:
     DEFAULT_LANGUAGE = os.getenv('DEFAULT_LANGUAGE') or 'en'
     BABEL_DEFAULT_LOCALE='translations'
     BABEL_DEFAULT_TIMEZONE=os.getenv('DEFAULT_TIMEZONE') or 'UTC'
+    ADMIN_PASSWORD=generate_password() if not os.getenv('ADMIN_PASSWORD') or os.getenv('ADMIN_PASSWORD').upper() == 'AUTO' else os.getenv('ADMIN_PASSWORD')

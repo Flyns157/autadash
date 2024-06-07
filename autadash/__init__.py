@@ -57,6 +57,32 @@ def init() -> Flask:
     with app.app_context():
         db.create_all()
 
+        # Create admin account if it does not exist
+        admin_email = app.config["MAIL_USERNAME"]
+        print(admin_email)
+        input()
+        admin_password = app.config["ADMIN_PASSWORD"]
+        
+        admin_user = User.query.filter_by(email=admin_email).first()
+        
+        if not admin_user:
+            admin_user = User(username="admin", email=admin_email, email_confirmed=True)
+            admin_user.set_password(admin_password)
+            db.session.add(admin_user)
+            db.session.commit()
+            logger.info(f'Admin account created with email: {admin_email}')
+            
+            # Send admin password by email
+            try:
+                send_email(admin_email, 'Admin Account Created',
+                           f'Your admin account has been created. Your password is: {admin_password}')
+                logger.info(f'Admin password sent to {admin_email}')
+            except Exception as e:
+                logger.error(f'Failed to send admin password email: {e}')
+
+            # Print admin password to console
+            print(f'Admin account created. Email: {admin_email}, Password: {admin_password}')
+
     # Publish the APP SECRET KEY
     print(f'APP SECRET KEY SET TO {app.config["SECRET_KEY"]}')
 
