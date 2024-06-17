@@ -1,27 +1,46 @@
-# Autadash
+# Plan de restructuration du projet Autadash:
 
-A simple web dashbord to manages your projects
-
-## How to run in dev config ?
-
-```shell
-python -m flask --app main.py run --debug
-```
-
-```PowerShell
-python -m flask --app main.py run --debug
-```
-
-
-
-## How to run in production config ?
-
-[Déployer en production — Documentation de Flask (2.1.x) (flask-fr.readthedocs.io)](https://flask-fr.readthedocs.io/tutorial/deploy/)
-
-⚠️ Don't forget to create and set your **`.env`** !
-
-⚠️ Don't forget to run this next command to install dependencies :
+## Structure de fichiers prévue :
 
 ```
-pip install -r requirements.txt
+│   .env
+│   .env.example
+│   .gitignore
+│   LICENSE
+│   README.md
+│   requirement.txt
+│
+└───autadash
+    │   __init__.py
+    │   __main__.py
+    │   auth.py
+    │   config.py
+    │
+    └───assets
+        ├───css
+        ├───img
+        │       logo.svg
+        │       logo_white.svg
+        │
+        ├───js
+        └───templates
+            ├───auth
+            │       login.partial.html
+            │       verify.partial.html
+            │       register.partial.html
+            │       reset_password.partial.html
+            │
+            └───mail
+                    activate.html
+                    new_device.html
+                    reset_password.html
+                    verification_code.html
+
++ translations
 ```
+
+## Liste des principales fonctionalitées :
+
+* authentification
+* multilangue
+* mailing
