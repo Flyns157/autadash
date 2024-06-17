@@ -1,16 +1,18 @@
+from flask import Flask, render_template, request, flash, url_for, redirect, render_template_string, abort
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask import Flask, render_template, request, flash, url_for, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
-from flask_babel import Babel, gettext, _
+from flask_babel import Babel, _
 import logging
 import random
 import string
 import json
 import re
+
+__version__ = '0.2.2'
 
 class Server(Flask):
     def __init__(self, *args, **kwargs):
@@ -25,7 +27,7 @@ class Server(Flask):
                             handlers=[logging.FileHandler('autadash.log'), logging.StreamHandler()])
         self.logger = logging.getLogger(__name__)
         
-        self.create_user_model()
+        self.User = self.create_user_model()
         
         self.add_auth_routes()
 
@@ -79,63 +81,66 @@ class Server(Flask):
                     return False
                 return self.verification_code_expiry > datetime.now()
         
+        return User
+
     def add_auth_routes(self):
 
         @self.login_manager.user_loader
-        def load_user(user_id):
-            return User.query.get(int(user_id))
+        def load_user(user_id): return User.query.get(int(user_id))
 
-        @self.route('/register', methods=['GET', 'POST'])
-        def register():
-            if request.method == 'POST':
-                username = request.form.get('username')
-                email = request.form.get('email')
-                password = request.form.get('password')
+        if self.config['INDEPENDENT_REGISTER']:
+            @self.route('/register', methods=['GET', 'POST'])
+            def register():
+                if request.method == 'POST':
+                    username = request.form.get('username')
+                    email = request.form.get('email')
+                    password = request.form.get('password')
 
-                self.logger.info(f'User register attempt: username={username}, email={email}')
+                    self.logger.info(f'User register attempt: username={username}, email={email}')
 
-                # Vérifier le format de l'email
-                if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                    flash(_('Format d\'email invalide'))
-                    self.logger.warning(f'Invalid email format: {email}')
-                    return redirect(url_for('register'))
+                    # Vérifier le format de l'email
+                    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                        flash(_('Format d\'email invalide'))
+                        self.logger.warning(f'Invalid email format: {email}')
+                        return redirect(url_for('register'))
 
-                # Vérifier si l'email est jetable
-                if email.split('@')[1] in ['jetable.com', 'yopmail.com']:
-                    flash(_('Veuillez utiliser une adresse email non jetable'))
-                    self.logger.warning(f'Disposable email used: {email}')
-                    return redirect(url_for('register'))
+                    # Vérifier si l'email est jetable
+                    if email.split('@')[1] in ['jetable.com', 'yopmail.com']:
+                        flash(_('Veuillez utiliser une adresse email non jetable'))
+                        self.logger.warning(f'Disposable email used: {email}')
+                        return redirect(url_for('register'))
 
-                # Vérifier si l'email existe déjà
-                user = User.query.filter_by(email=email).first()
-                if user:
-                    flash(_('L\'email est déjà utilisé'))
-                    self.logger.warning(f'Email already in use: {email}')
-                    return redirect(url_for('register'))
+                    # Vérifier si l'email existe déjà
+                    user = User.query.filter_by(email=email).first()
+                    if user:
+                        flash(_('L\'email est déjà utilisé'))
+                        self.logger.warning(f'Email already in use: {email}')
+                        return redirect(url_for('register'))
 
-                user = User.query.filter_by(username=username).first()
-                if user:
-                    flash(_('Le nom d\'utilisateur existe déjà'))
-                    self.logger.warning(f'Username already exists: {username}')
-                    return redirect(url_for('register'))
+                    user = User.query.filter_by(username=username).first()
+                    if user:
+                        flash(_('Le nom d\'utilisateur existe déjà'))
+                        self.logger.warning(f'Username already exists: {username}')
+                        return redirect(url_for('register'))
 
-                new_user = User(username=username, email=email)
-                new_user.set_password(password)
-                self.db.session.add(new_user)
-                self.db.session.commit()
+                    new_user = User(username=username, email=email)
+                    new_user.set_password(password)
+                    self.db.session.add(new_user)
+                    self.db.session.commit()
 
-                self.logger.info(f'New user created: {username}, {email}')
+                    self.logger.info(f'New user created: {username}, {email}')
 
-                # Envoyer un email de confirmation
-                token = self.generate_confirmation_token(new_user.email)
-                confirm_url = url_for('confirm_email', token=token, _external=True)
-                html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=self.languages)
-                self.send_email(new_user.email, 'Veuillez confirmer votre email', html)
+                    if self.config['MAIL_SERVICES']:
+                        # Envoyer un email de confirmation
+                        token = self.generate_confirmation_token(new_user.email)
+                        confirm_url = url_for('confirm_email', token=token, _external=True)
+                        html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=self.languages)
+                        self.send_email(new_user.email, 'Veuillez confirmer votre email', html)
 
-                self.logger.info(f'Confirmation email sent to: {email}')
+                        self.logger.info(f'Confirmation email sent to: {email}')
 
-                return redirect(url_for('login'))
-            return render_template('auth/register.html', SUPPORTED_LANGUAGES=self.languages)
+                    return redirect(url_for('login'))
+                return render_template('auth/register.html', SUPPORTED_LANGUAGES=self.languages)
 
         @self.route('/login', methods=['GET', 'POST'])
         def login():
@@ -151,19 +156,25 @@ class Server(Flask):
                     flash(_('Veuillez vérifier vos identifiants'))
                     return redirect(url_for('login'))
 
-                if not user.email_confirmed:
-                    self.logger.warning(f'Email not confirmed for: {username_or_email}')
-                    flash(_('Veuillez confirmer votre adresse email avant de vous connecter'))
-                    return redirect(url_for('login'))
-                self.send_verification_email(user)
-                self.logger.info(f'Verification code sent to: {user.email}')
+                if self.config['MAIL_SERVICES'] and self.config['V2F_REQUIRED']:
+                    if not user.email_confirmed:
+                        self.logger.warning(f'Email not confirmed for: {username_or_email}')
+                        flash(_('Veuillez confirmer votre adresse email avant de vous connecter'))
+                        return redirect(url_for('login'))
+                    self.send_verification_email(user)
+                    self.logger.info(f'Verification code sent to: {user.email}')
 
-                return redirect(url_for('verify', user_id=user.id))
+                    return redirect(url_for('verify', user_id=user.id))
+                
+                login_user(user)
+                self.logger.info(f'User logged in: {user.username}')
+                return redirect(url_for('/'))
 
             return render_template('auth/login.html', SUPPORTED_LANGUAGES=self.languages)
 
         @self.route('/verify/<int:user_id>', methods=['GET', 'POST'])
         def verify(user_id):
+            if not self.config['MAIL_SERVICES']: return abort(404)
             user = User.query.get(user_id)
             if request.method == 'POST':
                 verification_code = request.form.get('verification_code')
@@ -193,6 +204,7 @@ class Server(Flask):
 
         @self.route('/reset_password_request', methods=['GET', 'POST'])
         def reset_password_request():
+            if not self.config['MAIL_SERVICES']: abort(404)
             if request.method == 'POST':
                 email = request.form.get('email')
                 user = User.query.filter_by(email=email).first()
@@ -209,6 +221,7 @@ class Server(Flask):
 
         @self.route('/reset_password/<token>', methods=['GET', 'POST'])
         def reset_password(token):
+            if not self.config['MAIL_SERVICES']: abort(404)
             try:
                 email = self.confirm_token(token)
             except:
@@ -253,6 +266,7 @@ class Server(Flask):
         @self.route('/send-confirmation-email', methods=['POST'])
         @login_required
         def send_confirmation_email():
+            if not self.config['MAIL_SERVICES']: abort(404)
             user = current_user
             if not user.email_confirmed:
                 token = self.generate_confirmation_token(user.email)
