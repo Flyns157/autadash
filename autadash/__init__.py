@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from flask_login import LoginManager
 from flask_babel import Babel, _
-from config import Config
+from .config import Config
 import logging
 import random
 import string
