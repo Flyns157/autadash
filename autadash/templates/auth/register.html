@@ -1,0 +1,23 @@
+{% extends "layout.html" %} 
+{% block head %}
+<title>Autadash | {% trans %}Inscription{% endtrans %}</title>
+{% endblock %} 
+
+{% block content %}
+
+<form class="login" method="POST">
+    <h2>{% trans %}Sign up{% endtrans %}</h2>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <p id="error_message">{{ messages[0] }}</p>
+        {% endif %}
+    {% endwith %}
+    <input type="text" id="username" name="username" placeholder="{% trans %}Username{% endtrans %}" required />
+    <input type="email" id="email" name="email" placeholder="{% trans %}Email{% endtrans %}" required />
+    <input type="password" id="password" name="password" placeholder="{% trans %}Password{% endtrans %}" required />
+    <input type="submit" value="{% trans %}Sign up{% endtrans %}" />
+    <a href="#"></a>
+    <a href="{{ url_for('login') }}">{% trans %}Login{% endtrans %}</a>
+</form>
+
+{% endblock %}

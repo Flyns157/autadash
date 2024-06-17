@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<title>Autadash | {% trans %}Connexion{% endtrans %}</title>
+{% endblock %}
+
+{% block content %}
+
+<form class="login" method="POST">
+    <h2>{% trans %}Login{% endtrans %}</h2>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <p id="error_message">{{ messages[0] }}</p>
+        {% endif %}
+    {% endwith %}
+    <input type="text" id="username_or_email" name="username_or_email" placeholder="{% trans %}Username or Email{% endtrans %}" required />
+    <input type="password" id="password" name="password" placeholder="{% trans %}Password{% endtrans %}" required />
+    <input type="submit" value="{% trans %}Sign in{% endtrans %}" style="font-weight:bold;"/>
+    <div class="links">
+        <a href="{{ url_for('reset_password_request') }}">{% trans %}Forget Password{% endtrans %}</a>
+        <a href="{{ url_for('register') }}">{% trans %}Register{% endtrans %}</a>
+</form>
+
+{% endblock %}

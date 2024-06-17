@@ -1,0 +1,19 @@
+{% extends "layout.html" %} 
+{% block head %}
+<title>Autadash | {% trans %}Connexion{% endtrans %}</title>
+{% endblock %} 
+
+{% block content %}
+<main class="Ccomponent">
+    <div class="ring">
+        <i style="--clr: #00ff0a"></i>
+        <i style="--clr: #f2704d"></i>
+        <i style="--clr: #46baff"></i>
+        <form class="login" method="post" action="{{ url_for('verify', user_id=user_id) }}">
+            <input type="text" name="verification_code" placeholder="Code de vérification" required>
+            <button type="submit">Vérifier</button>
+        </form>
+    </div>
+</main>
+ring div ends here
+{% endblock %}

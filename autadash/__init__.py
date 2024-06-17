@@ -5,7 +5,7 @@ from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
-from flask_babel import Babel
+from flask_babel import Babel, gettext, _
 import logging
 import random
 import string
@@ -26,6 +26,8 @@ class Server(Flask):
         self.logger = logging.getLogger(__name__)
         
         self.create_user_model()
+        
+        self.add_auth_routes()
 
     def run(self, host: str | None = None, port: int | None = None, debug: bool | None = None, load_dotenv: bool = True, **options) -> None:
         # Init flask_mail
@@ -77,204 +79,199 @@ class Server(Flask):
                     return False
                 return self.verification_code_expiry > datetime.now()
         
-        def add_auth_routes(self):
+    def add_auth_routes(self):
 
-            @self.login_manager.user_loader
-            def load_user(user_id):
-                return User.query.get(int(user_id))
+        @self.login_manager.user_loader
+        def load_user(user_id):
+            return User.query.get(int(user_id))
 
-            @self.route('/signup', methods=['GET', 'POST'])
-            def signup():
-                if request.method == 'POST':
-                    username = request.form.get('username')
-                    email = request.form.get('email')
-                    password = request.form.get('password')
+        @self.route('/register', methods=['GET', 'POST'])
+        def register():
+            if request.method == 'POST':
+                username = request.form.get('username')
+                email = request.form.get('email')
+                password = request.form.get('password')
 
-                    self.logger.info(f'User signup attempt: username={username}, email={email}')
+                self.logger.info(f'User register attempt: username={username}, email={email}')
 
-                    # Vérifier le format de l'email
-                    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                        flash('Format d\'email invalide')
-                        self.logger.warning(f'Invalid email format: {email}')
-                        return redirect(url_for('auth.signup'))
+                # Vérifier le format de l'email
+                if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                    flash(_('Format d\'email invalide'))
+                    self.logger.warning(f'Invalid email format: {email}')
+                    return redirect(url_for('register'))
 
-                    # Vérifier si l'email est jetable
-                    if email.split('@')[1] in ['jetable.com', 'yopmail.com']:
-                        flash('Veuillez utiliser une adresse email non jetable')
-                        self.logger.warning(f'Disposable email used: {email}')
-                        return redirect(url_for('auth.signup'))
+                # Vérifier si l'email est jetable
+                if email.split('@')[1] in ['jetable.com', 'yopmail.com']:
+                    flash(_('Veuillez utiliser une adresse email non jetable'))
+                    self.logger.warning(f'Disposable email used: {email}')
+                    return redirect(url_for('register'))
 
-                    # Vérifier si l'email existe déjà
-                    user = User.query.filter_by(email=email).first()
-                    if user:
-                        flash('L\'email est déjà utilisé')
-                        self.logger.warning(f'Email already in use: {email}')
-                        return redirect(url_for('auth.signup'))
+                # Vérifier si l'email existe déjà
+                user = User.query.filter_by(email=email).first()
+                if user:
+                    flash(_('L\'email est déjà utilisé'))
+                    self.logger.warning(f'Email already in use: {email}')
+                    return redirect(url_for('register'))
 
-                    user = User.query.filter_by(username=username).first()
-                    if user:
-                        flash('Le nom d\'utilisateur existe déjà')
-                        self.logger.warning(f'Username already exists: {username}')
-                        return redirect(url_for('auth.signup'))
+                user = User.query.filter_by(username=username).first()
+                if user:
+                    flash(_('Le nom d\'utilisateur existe déjà'))
+                    self.logger.warning(f'Username already exists: {username}')
+                    return redirect(url_for('register'))
 
-                    new_user = User(username=username, email=email)
-                    new_user.set_password(password)
-                    db.session.add(new_user)
-                    db.session.commit()
+                new_user = User(username=username, email=email)
+                new_user.set_password(password)
+                self.db.session.add(new_user)
+                self.db.session.commit()
 
-                    self.logger.info(f'New user created: {username}, {email}')
+                self.logger.info(f'New user created: {username}, {email}')
 
-                    # Envoyer un email de confirmation
-                    token = generate_confirmation_token(new_user.email)
-                    confirm_url = url_for('auth.confirm_email', token=token, _external=True)
-                    html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
-                    send_email(new_user.email, 'Veuillez confirmer votre email', html)
+                # Envoyer un email de confirmation
+                token = self.generate_confirmation_token(new_user.email)
+                confirm_url = url_for('confirm_email', token=token, _external=True)
+                html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=self.languages)
+                self.send_email(new_user.email, 'Veuillez confirmer votre email', html)
 
-                    self.logger.info(f'Confirmation email sent to: {email}')
+                self.logger.info(f'Confirmation email sent to: {email}')
 
-                    return redirect(url_for('auth.login'))
-                return render_template('auth/signup.html', SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
+                return redirect(url_for('login'))
+            return render_template('auth/register.html', SUPPORTED_LANGUAGES=self.languages)
 
-            @self.route('/login', methods=['GET', 'POST'])
-            def login():
-                if request.method == 'POST':
-                    username_or_email = request.form.get('username_or_email')
-                    password = request.form.get('password')
+        @self.route('/login', methods=['GET', 'POST'])
+        def login():
+            if request.method == 'POST':
+                username_or_email = request.form.get('username_or_email')
+                password = request.form.get('password')
 
-                    self.logger.info(f'Login attempt: username_or_email={username_or_email}')
+                self.logger.info(f'Login attempt: username_or_email={username_or_email}')
 
-                    user = User.query.filter((User.email == username_or_email) | (User.username == username_or_email)).first()
-                    if not user or not user.check_password(password):
-                        self.logger.warning(f'Login failed for: {username_or_email}')
-                        flash('Veuillez vérifier vos identifiants')
-                        return redirect(url_for('auth.login'))
+                user = User.query.filter((User.email == username_or_email) | (User.username == username_or_email)).first()
+                if not user or not user.check_password(password):
+                    self.logger.warning(f'Login failed for: {username_or_email}')
+                    flash(_('Veuillez vérifier vos identifiants'))
+                    return redirect(url_for('login'))
 
-                    if not user.email_confirmed:
-                        self.logger.warning(f'Email not confirmed for: {username_or_email}')
-                        flash('Veuillez confirmer votre adresse email avant de vous connecter')
-                        return redirect(url_for('auth.login'))
-                    send_verification_email(user)
-                    self.logger.info(f'Verification code sent to: {user.email}')
-
-                    return redirect(url_for('auth.verify', user_id=user.id))
-
-                return render_template('auth/login.html', SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
-
-            @self.route('/verify/<int:user_id>', methods=['GET', 'POST'])
-            def verify(user_id):
-                user = User.query.get(user_id)
-                if request.method == 'POST':
-                    verification_code = request.form.get('verification_code')
-                
-                    print(user.verification_code, verification_code)
-                    if user.verification_code != verification_code:
-                        self.logger.warning(f'Invalid verification code for: {user.email}')
-                        flash('Code de vérification incorrect')
-                        return redirect(url_for('auth.verify', user_id=user_id))
-
-                    print(user.verification_code_expiry , datetime.now())
-                    if not user.verification_code_alive():
-                        self.logger.warning(f'Expired verification code for: {user.email}')
-                        flash('Code de vérification expiré')
-                        return redirect(url_for('auth.login'))
-
-                    # Clear the verification code and expiry after successful verification
-                    user.verification_code = None
-                    user.verification_code_expiry = None
-                    self.db.session.commit()
-
-                    login_user(user)
-                    self.logger.info(f'User logged in: {user.username}')
-                    return redirect(url_for('auth.profile'))
-
-                return render_template('auth/verify.html', user_id=user_id, SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
-
-            @self.route('/reset_password_request', methods=['GET', 'POST'])
-            def reset_password_request():
-                if request.method == 'POST':
-                    email = request.form.get('email')
-                    user = User.query.filter_by(email=email).first()
-                    if user:
-                        token = generate_confirmation_token(user.email)
-                        reset_url = url_for('auth.reset_password', token=token, _external=True)
-                        html = render_template('email/reset_password.html', reset_url=reset_url)
-                        send_email(user.email, 'Réinitialisation du mot de passe', html)
-                        flash('Un email avec les instructions pour réinitialiser votre mot de passe a été envoyé.', 'info')
-                    else:
-                        flash('Cet email n\'est pas enregistré.', 'warning')
-                    return redirect(url_for('auth.login'))
-                return render_template('auth/reset_password_request.html', SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
-
-            @self.route('/reset_password/<token>', methods=['GET', 'POST'])
-            def reset_password(token):
-                try:
-                    email = confirm_token(token)
-                except:
-                    flash('Le lien de réinitialisation est invalide ou a expiré.', 'danger')
-                    return redirect(url_for('auth.login'))
-                
-                if request.method == 'POST':
-                    password = request.form.get('password')
-                    user = User.query.filter_by(email=email).first()
-                    if user:
-                        user.set_password(password)
-                        self.db.session.commit()
-                        flash('Votre mot de passe a été mis à jour.', 'success')
-                        return redirect(url_for('auth.login'))
-                    else:
-                        flash('Utilisateur non trouvé.', 'danger')
-                        return redirect(url_for('auth.reset_password_request'))
-                
-                return render_template('auth/reset_password.html', token=token, SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
-
-            @self.route('/confirm/<token>')
-            def confirm_email(token):
-                try:
-                    email = confirm_token(token)
-                except:
-                    self.logger.error(f'Invalid or expired confirmation token used: {token}')
-                    flash('Le lien de confirmation est invalide ou a expiré.', 'danger')
-                    return redirect(url_for('auth.login'))
-
-                user = User.query.filter_by(email=email).first_or_404()
-                if user.email_confirmed:
-                    self.logger.info(f'Email already confirmed: {email}')
-                    flash('Compte déjà confirmé. Veuillez vous connecter.', 'success')
-                else:
-                    user.email_confirmed = True
-                    self.db.session.add(user)
-                    self.db.session.commit()
-                    self.logger.info(f'Email confirmed: {email}')
-                    flash('Vous avez confirmé votre compte. Merci!', 'success')
-                return redirect(url_for('auth.login'))
-
-            @self.route('/send-confirmation-email', methods=['POST'])
-            @login_required
-            def send_confirmation_email():
-                user = current_user
                 if not user.email_confirmed:
-                    token = generate_confirmation_token(user.email)
-                    confirm_url = url_for('auth.confirm_email', token=token, _external=True)
-                    html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
-                    send_email(user.email, 'Veuillez confirmer votre email', html)
-                    self.logger.info(f'Confirmation email resent to: {user.email}')
-                    flash('Un email de confirmation a été envoyé.', 'success')
+                    self.logger.warning(f'Email not confirmed for: {username_or_email}')
+                    flash(_('Veuillez confirmer votre adresse email avant de vous connecter'))
+                    return redirect(url_for('login'))
+                self.send_verification_email(user)
+                self.logger.info(f'Verification code sent to: {user.email}')
+
+                return redirect(url_for('verify', user_id=user.id))
+
+            return render_template('auth/login.html', SUPPORTED_LANGUAGES=self.languages)
+
+        @self.route('/verify/<int:user_id>', methods=['GET', 'POST'])
+        def verify(user_id):
+            user = User.query.get(user_id)
+            if request.method == 'POST':
+                verification_code = request.form.get('verification_code')
+            
+                print(user.verification_code, verification_code)
+                if user.verification_code != verification_code:
+                    self.logger.warning(f'Invalid verification code for: {user.email}')
+                    flash(_('Code de vérification incorrect'))
+                    return redirect(url_for('verify', user_id=user_id))
+
+                print(user.verification_code_expiry , datetime.now())
+                if not user.verification_code_alive():
+                    self.logger.warning(f'Expired verification code for: {user.email}')
+                    flash(_('Code de vérification expiré'))
+                    return redirect(url_for('login'))
+
+                # Clear the verification code and expiry after successful verification
+                user.verification_code = None
+                user.verification_code_expiry = None
+                self.db.session.commit()
+
+                login_user(user)
+                self.logger.info(f'User logged in: {user.username}')
+                return redirect(url_for('/'))
+
+            return render_template('auth/verify.html', user_id=user_id, SUPPORTED_LANGUAGES=self.languages)
+
+        @self.route('/reset_password_request', methods=['GET', 'POST'])
+        def reset_password_request():
+            if request.method == 'POST':
+                email = request.form.get('email')
+                user = User.query.filter_by(email=email).first()
+                if user:
+                    token = self.generate_confirmation_token(user.email)
+                    reset_url = url_for('reset_password', token=token, _external=True)
+                    html = render_template('email/reset_password.html', reset_url=reset_url)
+                    self.send_email(user.email, 'Réinitialisation du mot de passe', html)
+                    flash(_('Un email avec les instructions pour réinitialiser votre mot de passe a été envoyé.'), 'info')
                 else:
-                    self.logger.info(f'Confirmation email not sent, already confirmed: {user.email}')
-                    flash('Votre email est déjà confirmé.', 'info')
-                return redirect(url_for('auth.profile'))
+                    flash(_('Cet email n\'est pas enregistré.'), 'warning')
+                return redirect(url_for('login'))
+            return render_template('auth/reset_password_request.html', SUPPORTED_LANGUAGES=self.languages)
 
-            @self.route('/profile')
-            @login_required
-            def profile():
-                return render_template('auth/profile.html', name=current_user.username, email=current_user.email, email_confirmed=current_user.email_confirmed, SUPPORTED_LANGUAGES=SUPPORTED_LANGUAGES)
+        @self.route('/reset_password/<token>', methods=['GET', 'POST'])
+        def reset_password(token):
+            try:
+                email = self.confirm_token(token)
+            except:
+                flash(_('Le lien de réinitialisation est invalide ou a expiré.'), 'danger')
+                return redirect(url_for('login'))
+            
+            if request.method == 'POST':
+                password = request.form.get('password')
+                user = User.query.filter_by(email=email).first()
+                if user:
+                    user.set_password(password)
+                    self.db.session.commit()
+                    flash(_('Votre mot de passe a été mis à jour.'), 'success')
+                    return redirect(url_for('login'))
+                else:
+                    flash(_('Utilisateur non trouvé.'), 'danger')
+                    return redirect(url_for('reset_password_request'))
+            
+            return render_template('auth/reset_password.html', token=token, SUPPORTED_LANGUAGES=self.languages)
 
-            @self.route('/logout')
-            @login_required
-            def logout():
-                self.logger.info(f'User logged out: {current_user.username}')
-                logout_user()
-                return redirect(url_for('index'))
+        @self.route('/confirm/<token>')
+        def confirm_email(token):
+            try:
+                email = self.confirm_token(token)
+            except:
+                self.logger.error(f'Invalid or expired confirmation token used: {token}')
+                flash(_('Le lien de confirmation est invalide ou a expiré.'), 'danger')
+                return redirect(url_for('login'))
+
+            user = User.query.filter_by(email=email).first_or_404()
+            if user.email_confirmed:
+                self.logger.info(f'Email already confirmed: {email}')
+                flash(_('Compte déjà confirmé. Veuillez vous connecter.'), 'success')
+            else:
+                user.email_confirmed = True
+                self.db.session.add(user)
+                self.db.session.commit()
+                self.logger.info(f'Email confirmed: {email}')
+                flash(_('Vous avez confirmé votre compte. Merci!'), 'success')
+            return redirect(url_for('login'))
+
+        @self.route('/send-confirmation-email', methods=['POST'])
+        @login_required
+        def send_confirmation_email():
+            user = current_user
+            if not user.email_confirmed:
+                token = self.generate_confirmation_token(user.email)
+                confirm_url = url_for('confirm_email', token=token, _external=True)
+                html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=self.languages)
+                self.send_email(user.email, 'Veuillez confirmer votre email', html)
+                self.logger.info(f'Confirmation email resent to: {user.email}')
+                flash(_('Un email de confirmation a été envoyé.'), 'success')
+            else:
+                self.logger.info(f'Confirmation email not sent, already confirmed: {user.email}')
+                flash(_('Votre email est déjà confirmé.'), 'info')
+            return redirect(url_for('/'))
+
+        @self.route('/logout')
+        @login_required
+        def logout():
+            self.logger.info(f'User logged out: {current_user.username}')
+            logout_user()
+            return redirect(url_for('index'))
 
 
 # =================================== Utils ===================================
