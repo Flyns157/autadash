@@ -13,11 +13,32 @@ import string
 import json
 import re
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 __authors__ = ['Cuisset Mattéo']
 
 class Server(Flask):
+    """
+    Server class extends Flask to provide additional functionality such as
+    configuration loading, user authentication, database setup, and email handling.
+
+    Attributes:
+    languages (list): List of supported languages.
+    babel (Babel): Instance of Babel for i18n support.
+    login_manager (LoginManager): Instance of LoginManager for user session management.
+    mail (Mail): Instance of Mail for email handling.
+    db (SQLAlchemy): Instance of SQLAlchemy for ORM and database interaction.
+    logger (logging.Logger): Logger for logging application events.
+    User (class): User model class.
+    """
+    
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the Server instance.
+
+        Parameters:
+        *args: Variable length argument list.
+        **kwargs: Arbitrary keyword arguments.
+        """
         super().__init__(*args, **kwargs)
         self.config.from_object(Config)
         self.languages = kwargs.get('languages', ['en'])
@@ -38,27 +59,55 @@ class Server(Flask):
         self.add_auth_routes()
 
     def run(self, host: str = None, port: int = None, debug: bool = None, load_dotenv: bool = True, **options) -> None:
-        # Init flask_mail
+        """
+        Run the Flask application.
+
+        Parameters:
+        host (str): Hostname to listen on.
+        port (int): Port to listen on.
+        debug (bool): Enable or disable debug mode.
+        load_dotenv (bool): Load environment variables from .env file.
+        **options: Additional options to pass to the Flask run method.
+        """
+        # Initialize flask_mail
         self.mail.init_app(self)
 
-        # Init flask_login
+        # Initialize flask_login
         self.login_manager.init_app(self)
 
-        # Init flask_babel
+        # Initialize flask_babel
         self.babel.init_app(self, locale_selector=lambda : request.accept_languages.best_match(self.languages))
 
-        # Init SQLAlchemy
+        # Initialize SQLAlchemy
         self.db.init_app(self)
         with self.app_context(): self.db.create_all()
-        # TODO : prendre en compte les changement de paramètres et modifier la BD si nécessaire
+        # TODO : Handle changes in parameters and modify the database if necessary
         return super().run(host, port, debug, load_dotenv, **options)
 
     def create_user_model(self):
+        """
+        Create the User model.
+
+        Returns:
+        User (class): The User model class.
+        """
         global User
         class User(UserMixin, self.db.Model):
             """
             Data model for users.
+
+            Attributes:
+            id (int): User ID.
+            username (str): Username.
+            email (str): Email address.
+            password (str): Password hash.
+            known_devices (str): JSON string of known devices.
+            email_confirmed (bool): Email confirmation status (V2F > 0).
+            verification_code (str): Verification code (V2F > 0).
+            verification_code_expiry (datetime): Expiry time of the verification code (V2F > 0).
+            v2f (bool): 2-factor authentication status (V2F > 0).
             """
+
             id = self.db.Column(self.db.Integer, primary_key=True)
             username = self.db.Column(self.db.String(100), unique=True)
             email = self.db.Column(self.db.String(100), unique=True)
@@ -71,21 +120,57 @@ class Server(Flask):
                 v2f = self.db.Column(self.db.Boolean, default=False)
 
             def set_password(self, password):
+                """
+                Set the password for the user.
+
+                Parameters:
+                password (str): The password to be hashed and set.
+                """
                 self.password = generate_password_hash(password)
 
             def check_password(self, password):
+                """
+                Check the password against the stored hash.
+
+                Parameters:
+                password (str): The password to check.
+
+                Returns:
+                bool: True if the password matches, False otherwise.
+                """
                 return check_password_hash(self.password, password)
 
             def add_known_device(self, device_info):
+                """
+                Add a known device to the user's known devices list.
+
+                Parameters:
+                device_info (str): Information about the device.
+                """
                 devices = json.loads(self.known_devices)
                 devices.append(device_info)
                 self.known_devices = json.dumps(devices)
 
             def is_device_known(self, device_info):
+                """
+                Check if a device is known.
+
+                Parameters:
+                device_info (str): Information about the device.
+
+                Returns:
+                bool: True if the device is known, False otherwise.
+                """
                 devices = json.loads(self.known_devices)
                 return device_info in devices
             
-            def verification_code_alive(self)-> bool:
+            def verification_code_alive(self) -> bool:
+                """
+                Check if the verification code is still valid.
+
+                Returns:
+                bool: True if the verification code is still valid, False otherwise.
+                """
                 if self.verification_code_expiry is None:
                     return False
                 return self.verification_code_expiry > datetime.now()
@@ -93,9 +178,18 @@ class Server(Flask):
         return User
 
     def add_auth_routes(self):
+        """
+        Add authentication routes to the application.
+        """
         if self.config['INDEPENDENT_REGISTER']:
             @self.route('/register', methods=['GET', 'POST'])
             def register():
+                """
+                Handle user registration.
+                
+                Returns:
+                Response: Rendered registration template or redirect response.
+                """
                 if request.method == 'POST':
                     username = request.form.get('username')
                     email = request.form.get('email')
@@ -103,19 +197,19 @@ class Server(Flask):
 
                     self.logger.info(f'User register attempt: username={username}, email={email}')
 
-                    # Vérifier le format de l'email
+                    # Verify email format
                     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
                         flash(_('Format d\'email invalide'))
                         self.logger.warning(f'Invalid email format: {email}')
                         return redirect(url_for('register'))
 
-                    # Vérifier si l'email est jetable
+                    # Verify if the email is disposable
                     if email.split('@')[1] in ['jetable.com', 'yopmail.com']:
                         flash(_('Veuillez utiliser une adresse email non jetable'))
                         self.logger.warning(f'Disposable email used: {email} by {username}')
                         return redirect(url_for('register'))
 
-                    # Vérifier si l'email existe déjà
+                    # Check if the email already exists
                     user = User.query.filter_by(email=email).first()
                     if user:
                         flash(_('L\'email est déjà utilisé'))
@@ -136,7 +230,7 @@ class Server(Flask):
                     self.logger.info(f'New user created: {username}, {email}')
 
                     if self.config['V2F'] > 0:
-                        # Envoyer un email de confirmation
+                        # Send confirmation email
                         token = self.generate_confirmation_token(new_user.email)
                         confirm_url = url_for('confirm_email', token=token, _external=True)
                         html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=self.languages)
@@ -190,17 +284,24 @@ class Server(Flask):
         if self.config['V2F'] > 0:
             @self.route('/verify/<int:user_id>', methods=['GET', 'POST'])
             def verify(user_id):
+                """
+                Handle 2-factor verification.
+
+                Parameters:
+                user_id (int): The ID of the user to verify.
+
+                Returns:
+                Response: Rendered verification template or redirect response.
+                """
                 user = User.query.get(user_id)
                 if request.method == 'POST':
                     verification_code = request.form.get('verification_code')
                 
-                    print(user.verification_code, verification_code)
                     if user.verification_code != verification_code:
                         self.logger.warning(f'Invalid verification code for: {user.email}')
                         flash(_('Code de vérification incorrect'))
                         return redirect(url_for('verify', user_id=user_id))
 
-                    print(user.verification_code_expiry , datetime.now())
                     if not user.verification_code_alive():
                         self.logger.warning(f'Expired verification code for: {user.email}')
                         flash(_('Code de vérification expiré'))
@@ -219,6 +320,12 @@ class Server(Flask):
 
             @self.route('/reset_password_request', methods=['GET', 'POST'])
             def reset_password_request():
+                """
+                Handle password reset request.
+
+                Returns:
+                Response: Rendered password reset request template or redirect response.
+                """
                 if request.method == 'POST':
                     email = request.form.get('email')
                     user = User.query.filter_by(email=email).first()
@@ -235,7 +342,15 @@ class Server(Flask):
 
             @self.route('/reset_password/<token>', methods=['GET', 'POST'])
             def reset_password(token):
-                
+                """
+                Handle password reset.
+
+                Parameters:
+                token (str): The token for password reset.
+
+                Returns:
+                Response: Rendered password reset template or redirect response.
+                """
                 try:
                     email = self.confirm_token(token)
                 except:
@@ -258,6 +373,15 @@ class Server(Flask):
 
             @self.route('/confirm/<token>')
             def confirm_email(token):
+                """
+                Handle email confirmation.
+
+                Parameters:
+                token (str): The token for email confirmation.
+
+                Returns:
+                Response: Redirect response after email confirmation.
+                """
                 try:
                     email = self.confirm_token(token)
                 except:
@@ -280,6 +404,12 @@ class Server(Flask):
             @self.route('/send-confirmation-email', methods=['POST'])
             @login_required
             def send_confirmation_email():
+                """
+                Resend confirmation email.
+
+                Returns:
+                Response: Redirect response after sending confirmation email.
+                """
                 user = current_user
                 if not user.email_confirmed:
                     token = self.generate_confirmation_token(user.email)
@@ -296,6 +426,12 @@ class Server(Flask):
         @self.route('/logout')
         @login_required
         def logout():
+            """
+            Handle user logout.
+
+            Returns:
+            Response: Redirect response after logging out.
+            """
             self.logger.info(f'User logged out: {current_user.username}')
             logout_user()
             return redirect(url_for('index'))
@@ -303,6 +439,12 @@ class Server(Flask):
 
 # =================================== Utils ===================================
     def send_verification_email(self, user):
+        """
+        Send a verification email with a verification code.
+
+        Parameters:
+        user (User): The user to send the email to.
+        """
         # Generate and send verification code if email is confirmed
         verification_code = Utils.generate_verification_code()
         user.verification_code = verification_code
@@ -319,6 +461,14 @@ class Server(Flask):
 
 
     def send_email(self, to, subject, template) -> None:
+        """
+        Send an email.
+
+        Parameters:
+        to (str): Recipient email address.
+        subject (str): Email subject.
+        template (str): HTML template for the email body.
+        """
         msg = Message(
             subject,
             recipients=[to],
@@ -329,11 +479,30 @@ class Server(Flask):
 
 
     def generate_confirmation_token(self, email) -> str:
+        """
+        Generate a confirmation token for email verification.
+
+        Parameters:
+        email (str): Email address to generate the token for.
+
+        Returns:
+        str: The generated confirmation token.
+        """
         serializer = URLSafeTimedSerializer(self.config['SECRET_KEY'])
         return serializer.dumps(email, salt=self.config['SECURITY_PASSWORD_SALT'])
 
 
     def confirm_token(self, token: str, expiration=3600):
+        """
+        Confirm the token for email verification.
+
+        Parameters:
+        token (str): The token to confirm.
+        expiration (int): Token expiration time in seconds.
+
+        Returns:
+        str: The email address associated with the token if valid, else False.
+        """
         serializer = URLSafeTimedSerializer(self.config['SECRET_KEY'])
         try:
             email = serializer.loads(
@@ -346,11 +515,31 @@ class Server(Flask):
         return email
 
 class Utils:
+    """
+    Utility class for common utility functions.
+    """
+    
+    @staticmethod
     def generate_verification_code(size: int = 6) -> str:
+        """
+        Generate a verification code.
+
+        Parameters:
+        size (int): Length of the verification code.
+
+        Returns:
+        str: The generated verification code.
+        """
         CHARS = string.ascii_letters + string.digits
         return ''.join(random.choice(CHARS) for _ in range(size))
 
     def get_device_info():
+        """
+        Get device information from the request headers.
+
+        Returns:
+        dict: A dictionary containing device information such as user agent, IP address, etc.
+        """
         user_agent = request.headers.get('User-Agent')
         ip_address = request.remote_addr
         accept_headers = request.headers.get('Accept')
