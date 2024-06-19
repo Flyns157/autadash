@@ -25,6 +25,8 @@ class Config:
     Configuration class for the application settings.
 
     Attributes:
+    WTF_CSRF_ENABLED (bool): to activate CSRF protection.
+    WTF_CSRF_SECRET_KEY (str): Secret key for CSRF protection.
     SQLALCHEMY_DATABASE_URI (str): URI for the database connection.
     SECRET_KEY (str): Secret key for session management.
     SECURITY_PASSWORD_SALT (str): Salt for password hashing.
@@ -44,6 +46,8 @@ class Config:
     V2F (int): Custom configuration variable.
     INDEPENDENT_REGISTER (bool): Flag for independent registration setting.
     """
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_SECRET_KEY = generate_password() if not os.getenv('WTF_CSRF_SECRET_KEY') or os.getenv('WTF_CSRF_SECRET_KEY').upper() == 'AUTO' else os.getenv('WTF_CSRF_SECRET_KEY')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///db.sqlite'
     SECRET_KEY = os.getenv('SECRET_KEY') if os.getenv('SECRET_KEY') and os.getenv('SECRET_KEY').lower() != 'auto' else secrets.token_urlsafe()
     SECURITY_PASSWORD_SALT = os.getenv('SECURITY_PASSWORD_SALT') if os.getenv('SECURITY_PASSWORD_SALT') and os.getenv('SECURITY_PASSWORD_SALT').lower() != 'auto' else secrets.token_hex(16)

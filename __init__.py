@@ -5,6 +5,7 @@ from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
+from flask_wtf import CSRFProtect
 from flask_babel import Babel, _
 from .config import Config
 import logging
@@ -13,7 +14,7 @@ import string
 import json
 import re
 
-__version__ = '0.2.4'
+__version__ = '0.2.6'
 __authors__ = ['Cuisset Mattéo']
 
 class Server(Flask):
@@ -42,8 +43,9 @@ class Server(Flask):
         super().__init__(*args, **kwargs)
         self.config.from_object(Config)
         self.languages = kwargs.get('languages', ['en'])
-        self.babel = Babel()
         self.login_manager = LoginManager()
+        self.babel = Babel()
+        self.csrf = CSRFProtect(self)
         self.mail = Mail()
         self.db = SQLAlchemy()
         logging.basicConfig(level=logging.INFO,
@@ -214,6 +216,12 @@ class Server(Flask):
                     if user:
                         flash(_('L\'email est déjà utilisé'))
                         self.logger.warning(f'Email already in use: {email} ({username} try but {user} exist with tis email)')
+                        return redirect(url_for('register'))
+
+                    # Check if password is valid
+                    if len(password) < 12 or not re.search("^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$", password):
+                        flash('Le mot de passe doit contenir au moins 12 caractères, dont des chiffres, des lettres majuscules et minuscules.')
+                        self.logger.warning(f'Password not enought stonger: username={username}, email={email}')
                         return redirect(url_for('register'))
 
                     user = User.query.filter_by(username=username).first()

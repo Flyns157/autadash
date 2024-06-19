@@ -7,40 +7,38 @@ Autadash is a Flask-based web application designed to provide user authenticatio
 ## Project Structure
 
 ```plaintext
+│ __init__.py
+│ __main__.py
 | .env
 | .env.example
 | .gitignore
+│ config.py
 | Dockerfile
 | LICENCE
 | README.md
 | requirements.txt
-|
-└───autadash
-    │ config.py
-    │ __init__.py
-    │ __main__.py
+│
+├───assets
+│   ├───css
+│   │      style.css
+│   │
+│   ├───img
+│   └───js
+└───templates
+    │    layout.html
     │
-    ├───assets
-    │   ├───css
-    │   │      style.css
-    │   │
-    │   ├───img
-    │   └───js
-    └───templates
-        │    layout.html
-        │
-        ├───auth
-        │      login.html
-        │      register.html
-        │      reset_password.html
-        │      reset_password_request.html
-        │      verify.html
-        │
-        └───email
-                activate.html
-                new_device.html
-                reset_password.html
-                verification_code.html
+    ├───auth
+    │      login.html
+    │      register.html
+    │      reset_password.html
+    │      reset_password_request.html
+    │      verify.html
+    │
+    └───email
+            activate.html
+            new_device.html
+            reset_password.html
+            verification_code.html
 
 + translations
 ```
@@ -54,6 +52,7 @@ Autadash is a Flask-based web application designed to provide user authenticatio
 - Flask-Login
 - Flask-Mail
 - Flask-Babel
+- Flask-WTF
 - Flask-SQLAlchemy
 - dotenv
 - Werkzeug
@@ -62,48 +61,50 @@ Autadash is a Flask-based web application designed to provide user authenticatio
 ### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/autadash.git
-   cd autadash
-   ```
 
-2. Create a virtual environment and activate it:
+   ```bash
+   cd path/to/your/project
+   git clone https://github.com/yourusername/autadash.git
+   ```
+2. (Optional) Create a virtual environment and activate it:
+
    ```bash
    python3 -m venv venv
    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
    ```
-
 3. Install the required packages:
+
    ```bash
    pip install -r requirements.txt
    ```
-
 4. Create a `.env` file by copying `.env.example` and filling in the required environment variables:
+
    ```bash
    cp .env.example .env
    ```
 
-### Running the Application
+### Running your Application
 
 1. Start the Flask application:
-   ```bash
-   python -m autadash
-   ```
 
+   ```bash
+   python -m flask run
+   ```
 2. Open your browser and navigate to `http://127.0.0.1:5000`.
 
 ### Docker
 
-You can also run the application using Docker:
+You can also run the application using Docker, for example:
 
-1. Build the Docker image:
+1. Build the Docker image (see the [Docker example](Dockerfile.example)):
+
    ```bash
-   docker build -t autadash .
+   docker build -t autadash_example .
    ```
-
 2. Run the Docker container:
+
    ```bash
-   docker run -d -p 5000:5000 --env-file .env autadash
+   docker run --rm -it -v $PWD/:/autadash -p 8080:8080 autadash_example
    ```
 
 ## Configuration
@@ -123,15 +124,15 @@ Configuration settings are stored in the `config.py` file and can be overridden 
 
 ## Project Files
 
-### `autadash/__init__.py`
+### `./__init__.py`
 
 This file initializes the Flask application, sets up configurations, and defines routes for authentication, user management, and email verification.
 
-### `autadash/config.py`
+### `./config.py`
 
 Contains the configuration settings for the Flask application, which are loaded from environment variables.
 
-### `autadash/__main__.py`
+### `./__main__.py`
 
 Contains the entry point to run the Flask application.
 
@@ -162,22 +163,11 @@ Contains static files such as CSS, JavaScript, and images.
    ```
 5. Open a pull request.
 
-
 ## Notes :
 
 **Some points for improvement:**
 
-* Error handling: Currently, your code doesn't seem to handle errors that might occur when executing certain operations, such as adding a new user to the database. You might consider adding error handling to improve the robustness of your application.
-* Logs: Although you may have set up a logger, it might be useful to add more logs throughout your application to facilitate debugging and monitoring.
 * Security: Make sure your application follows security best practices. For example, you might consider using flask_wtf for forms to protect against CSRF attacks.
-* Configuration: It might be useful to separate your configuration into a separate configuration file or object, rather than having it directly in your code. This would make your application more flexible and easier to configure in different environments.
-
-**Quelques points à améliorer :**
-
-* Gestion des erreurs : Actuellement, votre code ne semble pas gérer les erreurs qui pourraient survenir lors de l’exécution de certaines opérations, comme l’ajout d’un nouvel utilisateur à la base de données. Vous pourriez envisager d’ajouter une gestion des erreurs pour améliorer la robustesse de votre application.
-* Logs : Bien que vous ayez configuré un logger, il pourrait être utile d’ajouter plus de logs à travers votre application pour faciliter le débogage et la surveillance de votre application.
-* Sécurité : Assurez-vous que votre application suit les meilleures pratiques de sécurité. Par exemple, vous pourriez envisager d’utiliser flask_wtf pour les formulaires afin de vous protéger contre les attaques CSRF.
-* Configuration : Il pourrait être utile de séparer votre configuration dans un fichier ou un objet de configuration distinct, plutôt que de l’avoir directement dans votre code. Cela rendrait votre application plus flexible et plus facile à configurer dans différents environnements.
 
 ## License
 

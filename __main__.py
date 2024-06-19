@@ -1,4 +1,4 @@
-from autadash import Server
+from . import Server
 import argparse
 import sys
 
