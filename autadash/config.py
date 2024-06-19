@@ -24,6 +24,9 @@ class Config:
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = ('Autadash', os.getenv('MAIL_DEFAULT_SENDER'))
     DEFAULT_LANGUAGE = os.getenv('DEFAULT_LANGUAGE') or 'en'
-    BABEL_DEFAULT_LOCALE='translations'
-    BABEL_DEFAULT_TIMEZONE=os.getenv('DEFAULT_TIMEZONE') or 'UTC'
-    ADMIN_PASSWORD=generate_password() if not os.getenv('ADMIN_PASSWORD') or os.getenv('ADMIN_PASSWORD').upper() == 'AUTO' else os.getenv('ADMIN_PASSWORD')
+    BABEL_DEFAULT_LOCALE = str(os.getenv('INDEPENDENT_REGISTER')) or 'translations'
+    BABEL_DEFAULT_TIMEZONE = os.getenv('DEFAULT_TIMEZONE') or 'UTC'
+    ADMIN_PASSWORD = generate_password() if not os.getenv('ADMIN_PASSWORD') or os.getenv('ADMIN_PASSWORD').upper() == 'AUTO' else os.getenv('ADMIN_PASSWORD')
+    MAIL_SERVICES=str(os.getenv('MAIL_SERVICES') or 'False').lower() == 'true'
+    V2F=int(os.getenv('V2F') or '0')
+    INDEPENDENT_REGISTER=str(os.getenv('INDEPENDENT_REGISTER') or 'True').lower() == 'true'
