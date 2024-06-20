@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, flash, url_for, redirect, ren
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer
+from .forms import RegistrationForm, LoginForm
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
@@ -14,7 +15,7 @@ import string
 import json
 import re
 
-__version__ = '0.2.5'
+__version__ = '0.2.6'
 __authors__ = ['Cuisset Mattéo']
 
 class Server(Flask):
