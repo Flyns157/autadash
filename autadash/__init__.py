@@ -193,29 +193,30 @@ class Server(Flask):
                 Returns:
                 Response: Rendered registration template or redirect response.
                 """
-                if request.method == 'POST':
-                    username = request.form.get('username')
-                    email = request.form.get('email')
-                    password = request.form.get('password')
+                form = RegistrationForm()
+                if form.validate_on_submit():
+                    username = form.username.data
+                    email = form.email.data
+                    password = form.password.data
 
                     self.logger.info(f'User register attempt: username={username}, email={email}')
 
                     # Verify email format
                     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                        flash(_('Format d\'email invalide'))
+                        flash(_('Invalid email format'))
                         self.logger.warning(f'Invalid email format: {email}')
                         return redirect(url_for('register'))
 
                     # Verify if the email is disposable
                     if email.split('@')[1] in ['jetable.com', 'yopmail.com']:
-                        flash(_('Veuillez utiliser une adresse email non jetable'))
+                        flash(_('Please use a non-disposable email address'))
                         self.logger.warning(f'Disposable email used: {email} by {username}')
                         return redirect(url_for('register'))
 
                     # Check if the email already exists
                     user = User.query.filter_by(email=email).first()
                     if user:
-                        flash(_('L\'email est déjà utilisé'))
+                        flash(_('Email is already in use'))
                         self.logger.warning(f'Email already in use: {email} ({username} try but {user} exist with tis email)')
                         return redirect(url_for('register'))
 
@@ -225,9 +226,10 @@ class Server(Flask):
                         self.logger.warning(f'Password not enought stonger: username={username}, email={email}')
                         return redirect(url_for('register'))
 
+                    # Check if username already exists
                     user = User.query.filter_by(username=username).first()
                     if user:
-                        flash(_('Le nom d\'utilisateur existe déjà'))
+                        flash(_('Username already exists'))
                         self.logger.warning(f'Username already exists: {username} {"(with " + email + ")" if email != user.email else ""}')
                         return redirect(url_for('register'))
 
@@ -243,10 +245,10 @@ class Server(Flask):
                         token = self.generate_confirmation_token(new_user.email)
                         confirm_url = url_for('confirm_email', token=token, _external=True)
                         html = render_template('email/activate.html', confirm_url=confirm_url, SUPPORTED_LANGUAGES=self.languages)
-                        self.send_email(new_user.email, 'Veuillez confirmer votre email', html)
+                        self.send_email(new_user.email, 'Please confirm your email', html)
 
                         self.logger.info(f'Confirmation email sent to: {email}')
-                        
+
                         if self.config['V2F'] == 2:
                             return redirect(url_for('login'))
 
@@ -258,37 +260,38 @@ class Server(Flask):
                     login_user(user)
                     self.logger.info(f'User logged in: {user.username}')
                     return redirect(url_for('/'))
-                return render_template('auth/register.html', SUPPORTED_LANGUAGES=self.languages)
+                return render_template('auth/register.html', form=form, SUPPORTED_LANGUAGES=self.languages)
 
         @self.route('/login', methods=['GET', 'POST'])
         def login():
-            if request.method == 'POST':
-                username_or_email = request.form.get('username_or_email')
-                password = request.form.get('password')
+            form = LoginForm()
+            if form.validate_on_submit():
+                username_or_email = form.username_or_email.data
+                password = form.password.data
 
                 self.logger.info(f'Login attempt: username_or_email={username_or_email}')
 
                 user = User.query.filter((User.email == username_or_email) | (User.username == username_or_email)).first()
                 if not user or not user.check_password(password):
                     self.logger.warning(f'Login failed for: {username_or_email}')
-                    flash(_('Veuillez vérifier vos identifiants'))
+                    flash(_('Please check your login details and try again.'))
                     return redirect(url_for('login'))
 
                 if self.config['V2F'] == 2:
                     if not user.email_confirmed:
                         self.logger.warning(f'Email not confirmed for: {username_or_email}')
-                        flash(_('Veuillez confirmer votre adresse email avant de vous connecter'))
+                        flash(_('Please confirm your email address before logging in.'))
                         return redirect(url_for('login'))
                     self.send_verification_email(user)
                     self.logger.info(f'Verification code sent to: {user.email}')
 
                     return redirect(url_for('verify', user_id=user.id))
-                
+
                 login_user(user)
                 self.logger.info(f'User logged in: {user.username}')
                 return redirect(url_for('/'))
 
-            return render_template('auth/login.html', SUPPORTED_LANGUAGES=self.languages)
+            return render_template('auth/login.html', form=form, SUPPORTED_LANGUAGES=self.languages)
 
         if self.config['V2F'] > 0:
             @self.route('/verify/<int:user_id>', methods=['GET', 'POST'])
