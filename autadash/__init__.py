@@ -1,12 +1,14 @@
 from flask import Flask, render_template, request, flash, url_for, redirect, render_template_string, abort
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_limiter.util import get_remote_address
 from itsdangerous import URLSafeTimedSerializer
 from .forms import RegistrationForm, LoginForm
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
 from flask_babel import Babel, _
 from .config import Config
 import logging
@@ -45,6 +47,7 @@ class Server(Flask):
         self.config.from_object(Config)
         self.languages = kwargs.get('languages', ['en'])
         self.login_manager = LoginManager()
+        self.limiter = Limiter(get_remote_address, default_limits=["200 per day", "50 per hour"])
         self.babel = Babel()
         self.csrf = CSRFProtect(self)
         self.mail = Mail()
@@ -80,6 +83,9 @@ class Server(Flask):
 
         # Initialize flask_babel
         self.babel.init_app(self, locale_selector=lambda : request.accept_languages.best_match(self.languages))
+        
+        # Initialize flask_limiter
+        self.limiter.init_app(self)
 
         # Initialize SQLAlchemy
         self.db.init_app(self)
@@ -186,6 +192,7 @@ class Server(Flask):
         """
         if self.config['INDEPENDENT_REGISTER']:
             @self.route('/register', methods=['GET', 'POST'])
+            @self.limiter.limit("5 per minute")
             def register():
                 """
                 Handle user registration.
@@ -263,6 +270,7 @@ class Server(Flask):
                 return render_template('auth/register.html', form=form, SUPPORTED_LANGUAGES=self.languages)
 
         @self.route('/login', methods=['GET', 'POST'])
+        @self.limiter.limit("10 per minute")
         def login():
             form = LoginForm()
             if form.validate_on_submit():
